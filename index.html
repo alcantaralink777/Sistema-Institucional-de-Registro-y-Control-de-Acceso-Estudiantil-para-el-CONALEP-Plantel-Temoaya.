@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Acceso QR - CONALEP Temoaya</title>
-    <!-- Librería HTML5 para la cámara y lectura QR -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 20px; text-align: center; }
@@ -31,6 +30,7 @@
         <button id="btnSalida" class="btn-salida" onclick="setTipo('SALIDA')">SALIDA</button>
     </div>
 
+    <!-- Visor de la cámara -->
     <div id="reader"></div>
 
     <h3>Registro de Notificaciones:</h3>
@@ -38,10 +38,17 @@
 </div>
 
 <script>
- function onScanSuccess(decodedText, decodedResult) {
+    let tipoMovimiento = 'ENTRADA';
+
+    function setTipo(tipo) {
+        tipoMovimiento = tipo;
+        document.getElementById('btnEntrada').classList.toggle('active', tipo === 'ENTRADA');
+        document.getElementById('btnSalida').classList.toggle('active', tipo === 'SALIDA');
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
         const log = document.getElementById('log');
         
-        // Limpiar el texto si escanea una URL completa de la credencial oficial
         let matriculaLimpia = decodedText.trim();
         if (matriculaLimpia.includes('/')) {
             const partes = matriculaLimpia.split('/');
@@ -50,7 +57,6 @@
 
         log.innerHTML += `<br>> Detectado: ${matriculaLimpia}. Procesando...`;
 
-        // Petición hacia la nueva IP de tu computadora (192.168.137.209)
         fetch('http://192.168.137.209:3000/api/escaneo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -66,6 +72,10 @@
             log.innerHTML += `<br><span style="color:#f87171;">> Error: No se pudo conectar con el servidor local.</span>`;
         });
     }
+
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess);
+</script>
 
 </body>
 </html>
