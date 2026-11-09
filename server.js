@@ -7,13 +7,17 @@ app.use(cors());
 app.use(express.json());
 
 // Configuración adaptada a tu SQL Server (Autenticación de Windows)
-const dbConfig = {
-    server: '.\\ALCANTARA1',
+const sql = require('mssql/msnodesqlv8');
+
+const config = {
+    server: '.\\ALCANTARA1', // Tu instancia local
     database: 'conalep_acceso',
     driver: 'msnodesqlv8',
     options: {
-        trustedConnection: true
+        trustedConnection: true, // Autenticación de Windows
+        enableArithAbort: true
     }
+};
 };
 
 // Endpoint que recibe el escaneo del QR desde la web/móvil
