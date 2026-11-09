@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Acceso QR - CONALEP Temoaya</title>
+    <!-- Librería HTML5 para la cámara y lectura QR -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        h1 { font-size: 1.4rem; color: #38bdf8; margin-bottom: 5px; }
+        p { color: #94a3b8; font-size: 0.9rem; }
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin: 15px 0; background: #000; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-entrada { background: #22c55e; color: white; }
+        .btn-salida { background: #ef4444; color: white; }
+        .active { outline: 3px solid #fff; }
+        #log { background: #0f172a; padding: 10px; border-radius: 6px; text-align: left; font-size: 0.85rem; height: 120px; overflow-y: auto; color: #4ade80; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>CONALEP Plantel Temoaya</h1>
+    <p>Escáner Móvil de Acceso Estudiantil</p>
+
+    <div class="btn-group">
+        <button id="btnEntrada" class="btn-entrada active" onclick="setTipo('ENTRADA')">ENTRADA</button>
+        <button id="btnSalida" class="btn-salida" onclick="setTipo('SALIDA')">SALIDA</button>
+    </div>
+
+    <div id="reader"></div>
+
+    <h3>Registro de Notificaciones:</h3>
+    <div id="log">> Esperando escaneo de credencial QR...</div>
+</div>
+
+<script>
+    let tipoMovimiento = 'ENTRADA';
+
+    function setTipo(tipo) {
+        tipoMovimiento = tipo;
+        document.getElementById('btnEntrada').classList.toggle('active', tipo === 'ENTRADA');
+        document.getElementById('btnSalida').classList.toggle('active', tipo === 'SALIDA');
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+        const log = document.getElementById('log');
+        log.innerHTML += `<br>> Código detectado: ${decodedText}. Procesando...`;
+
+        // Llamada a la API Backend que corre en tu Node.js (puerto 3000)
+        fetch('http://localhost:3000/api/escaneo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matricula: decodedText, tipo_movimiento: tipoMovimiento })
+        })
+        .then(res => res.json())
+        .then(data => {
+            log.innerHTML += `<br><span style="color:#38bdf8;">> BD: ${data.mensaje} (${data.alumno || ''})</span>`;
+            log.innerHTML += `<br><span style="color:#facc15;">> API: ${data.notificacion}</span>`;
+            log.scrollTop = log.scrollHeight;
+        })
+        .catch(err => {
+            log.innerHTML += `<br><span style="color:#f87171;">> Error: No se pudo conectar con el servidor local.</span>`;
+        });
+    }
+
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess);
+</script>
+
+</body>
+</html>
