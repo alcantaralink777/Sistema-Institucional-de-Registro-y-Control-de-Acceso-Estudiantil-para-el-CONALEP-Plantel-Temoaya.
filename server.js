@@ -7,10 +7,8 @@ app.use(cors());
 app.use(express.json());
 
 // Configuración adaptada a tu SQL Server (Autenticación de Windows)
-
 const dbConfig = {
     connectionString: "Driver={ODBC Driver 17 for SQL Server};Server=.\\ALCANTARA1;Database=conalep_acceso;Trusted_Connection=yes;"
-};
 };
 
 // Endpoint que recibe el escaneo del QR desde la web/móvil
@@ -64,6 +62,6 @@ app.post('/api/escaneo', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Servidor API ejecutándose en http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor API ejecutándose en http://localhost:${PORT} y en la red local`);
 });
