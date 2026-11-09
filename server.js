@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const sql = require('mssql/msnodesqlv8'); // Controlador para Autenticación de Windows
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
 
 const app = express();
 app.use(cors());
@@ -14,6 +16,24 @@ app.use(express.static(path.join(__dirname)));
 const dbConfig = {
     connectionString: "Driver={ODBC Driver 17 for SQL Server};Server=.\\ALCANTARA1;Database=conalep_acceso;Trusted_Connection=yes;"
 };
+
+// ==========================================
+// CONFIGURACIÓN CLIENTE WHATSAPP WEB
+// ==========================================
+const waClient = new Client({
+    authStrategy: new LocalAuth() // Guarda la sesión para no escanear el QR cada vez
+});
+
+waClient.on('qr', (qr) => {
+    console.log('\n--- ESCANEA ESTE CÓDIGO QR CON TU WHATSAPP ---');
+    qrcode.generate(qr, { small: true });
+});
+
+waClient.on('ready', () => {
+    console.log('✅ ¡Cliente de WhatsApp conectado y listo para enviar mensajes!');
+});
+
+waClient.initialize();
 
 // Endpoint que recibe el escaneo del QR desde la web/móvil
 app.post('/api/escaneo', async (req, res) => {
@@ -89,23 +109,43 @@ app.post('/api/escaneo', async (req, res) => {
         const fechaHoraActual = new Date().toLocaleString('es-MX');
         console.log(`[REGISTRO BD] Alumno: ${alumno.nombre} (${alumno.grupo}) - ${tipo_movimiento} a las ${fechaHoraActual}`);
         
+        let estadoNotificacion = 'Sin teléfono de tutor registrado';
+
+        // 3. ENVIAR WHATSAPP REAL AL TUTOR SI TIENE NÚMERO
         if (alumno.telefono_tutor) {
-            console.log(`[TUTOR] Teléfono registrado para notificación: ${alumno.telefono_tutor}`);
+            let numeroLimpio = alumno.telefono_tutor.trim();
+            if (!numeroLimpio.startsWith('52') && numeroLimpio.length === 10) {
+                numeroLimpio = '52' + numeroLimpio;
+            }
+            const chatId = `${numeroLimpio}@c.us`;
+
+            const mensajeWhatsApp = `🔔 *CONALEP Plantel Temoaya*\n\nAviso escolar:\nEstimado tutor, le informamos que el alumno(a) *${alumno.nombre}* (${alumno.grupo}) ha registrado su *${tipo_movimiento}* al plantel.\n\n📅 Fecha y hora: ${fechaHoraActual}`;
+
+            try {
+                await waClient.sendMessage(chatId, mensajeWhatsApp);
+                console.log(`[WHATSAPP] Mensaje enviado exitosamente al tutor al número: ${alumno.telefono_tutor}`);
+                estadoNotificacion = `Enviado al tutor (${alumno.telefono_tutor})`;
+            } catch (waError) {
+                console.error('[WHATSAPP ERROR] No se pudo enviar el mensaje:', waError);
+                estadoNotificacion = 'Error al enviar WhatsApp';
+            }
         } else {
             console.log(`[TUTOR] El alumno no tiene un número de tutor registrado.`);
         }
 
-        // 3. Actualización limpia del estatus de notificación en el último registro del alumno
+        // 4. Actualización del estatus de notificación en la base de datos
+        const estatusFinalBD = (estadoNotificacion.includes('Enviado')) ? 'ENVIADO' : 'PENDIENTE';
         await pool.request()
             .input('id_alumno', sql.Int, alumno.id_alumno)
-            .query("UPDATE registros_acceso SET estatus_notificacion = 'ENVIADO' WHERE id_registro = (SELECT MAX(id_registro) FROM registros_acceso WHERE id_alumno = @id_alumno)");
+            .input('estatus', sql.VarChar, estatusFinalBD)
+            .query("UPDATE registros_acceso SET estatus_notificacion = @estatus WHERE id_registro = (SELECT MAX(id_registro) FROM registros_acceso WHERE id_alumno = @id_alumno)");
 
         res.json({
             status: 'success',
             mensaje: `Acceso de ${tipo_movimiento} registrado con éxito`,
             alumno: `${alumno.nombre} - ${alumno.carrera} (${alumno.grupo})`,
             fechaHora: fechaHoraActual,
-            notificacion: alumno.telefono_tutor ? `Enviado al tutor (${alumno.telefono_tutor})` : 'Sin teléfono de tutor registrado'
+            notificacion: estadoNotificacion
         });
 
     } catch (err) {
