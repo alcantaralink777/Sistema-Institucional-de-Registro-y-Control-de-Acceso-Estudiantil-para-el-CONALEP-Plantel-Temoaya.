@@ -55,6 +55,11 @@
             matriculaLimpia = partes[partes.length - 1];
         }
 
+        // FILTRO DE SEGURIDAD: Si la cámara lee texto basura o sale incompleto (< 8 caracteres), se descarta de inmediato
+        if (matriculaLimpia.length < 8) {
+            return; 
+        }
+
         log.innerHTML += `<br>> Detectado: ${matriculaLimpia}. Procesando...`;
 
         fetch('http://192.168.137.209:3000/api/escaneo', {
@@ -64,7 +69,11 @@
         })
         .then(res => res.json())
         .then(data => {
-            log.innerHTML += `<br><span style="color:#38bdf8;">> BD: ${data.mensaje || 'Procesado'} (${data.alumno || ''})</span>`;
+            if (data.status === 'success') {
+                log.innerHTML += `<br><span style="color:#38bdf8;">> BD: ${data.mensaje} (${data.alumno})</span>`;
+            } else {
+                log.innerHTML += `<br><span style="color:#f87171;">> Aviso: ${data.mensaje}</span>`;
+            }
             log.innerHTML += `<br><span style="color:#facc15;">> API: ${data.notificacion || 'OK'}</span>`;
             log.scrollTop = log.scrollHeight;
         })
