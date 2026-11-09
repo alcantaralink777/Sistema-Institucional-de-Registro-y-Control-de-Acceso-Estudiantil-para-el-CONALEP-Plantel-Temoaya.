@@ -50,8 +50,8 @@
         const log = document.getElementById('log');
         log.innerHTML += `<br>> Código detectado: ${decodedText}. Procesando...`;
 
-        // Llamada a la API Backend que corre en tu Node.js (puerto 3000)
-        fetch('http://localhost:3000/api/escaneo', {
+        // Conexión a la IP local de tu laptop (192.168.68.117) en el puerto 3000
+        fetch('http://192.168.68.117:3000/api/escaneo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ matricula: decodedText, tipo_movimiento: tipoMovimiento })
