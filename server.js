@@ -1,10 +1,14 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const sql = require('mssql/msnodesqlv8'); // Controlador para Autenticación de Windows
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Servir archivos estáticos (index.html) desde la misma carpeta del proyecto
+app.use(express.static(path.join(__dirname)));
 
 // Configuración adaptada a tu SQL Server (Autenticación de Windows)
 const dbConfig = {
@@ -33,6 +37,49 @@ app.post('/api/escaneo', async (req, res) => {
 
         const alumno = resultadoAlumno.recordset[0];
 
+        // 1.5. VALIDACIÓN ANTI-DUPLICADOS Y DE ALTERNANCIA (Entrada / Salida)
+        let ultimoMovimiento = await pool.request()
+            .input('id_alumno', sql.Int, alumno.id_alumno)
+            .query('SELECT TOP 1 tipo_movimiento, fecha_hora FROM registros_acceso WHERE id_alumno = @id_alumno ORDER BY id_registro DESC');
+
+        if (ultimoMovimiento.recordset.length > 0) {
+            const ultimo = ultimoMovimiento.recordset[0];
+            const tiempoTranscurrido = (new Date() - new Date(ultimo.fecha_hora)) / 1000; // en segundos
+
+            // Regla A: Evitar doble escaneo idéntico por accidente en menos de 30 segundos
+            if (tiempoTranscurrido < 30 && ultimo.tipo_movimiento === tipo_movimiento) {
+                return res.json({
+                    status: 'success',
+                    mensaje: `Acceso ya registrado recientemente`,
+                    alumno: `${alumno.nombre} - ${alumno.carrera} (${alumno.grupo})`,
+                    notificacion: 'Movimiento omitido por duplicidad rápida'
+                });
+            }
+
+            // Regla B: Validar secuencia lógica (evitar doble entrada o doble salida seguida)
+            if (tipo_movimiento === 'ENTRADA' && ultimo.tipo_movimiento === 'ENTRADA' && tiempoTranscurrido > 30) {
+                return res.status(400).json({
+                    status: 'error',
+                    mensaje: `El alumno ya se encuentra dentro. Debe registrar Salida.`
+                });
+            }
+
+            if (tipo_movimiento === 'SALIDA' && ultimo.tipo_movimiento === 'SALIDA' && tiempoTranscurrido > 30) {
+                return res.status(400).json({
+                    status: 'error',
+                    mensaje: `El alumno ya registró su salida previamente.`
+                });
+            }
+        } else {
+            // Si es su primer registro histórico y selecciona SALIDA por error
+            if (tipo_movimiento === 'SALIDA') {
+                return res.status(400).json({
+                    status: 'error',
+                    mensaje: `No hay registro previo de entrada para este alumno.`
+                });
+            }
+        }
+
         // 2. Registrar el acceso en la tabla registros_acceso
         await pool.request()
             .input('id_alumno', sql.Int, alumno.id_alumno)
@@ -42,10 +89,10 @@ app.post('/api/escaneo', async (req, res) => {
         const fechaHoraActual = new Date().toLocaleString('es-MX');
         console.log(`[REGISTRO BD] Alumno: ${alumno.nombre} (${alumno.grupo}) - ${tipo_movimiento} a las ${fechaHoraActual}`);
 
-        // 3. Simular actualización del envío de notificación
+        // 3. Actualización limpia del estatus de notificación en el último registro del alumno
         await pool.request()
             .input('id_alumno', sql.Int, alumno.id_alumno)
-            .query("UPDATE TOP (1) registros_acceso SET estatus_notificacion = 'ENVIADO' WHERE id_alumno = @id_alumno ORDER BY id_registro DESC");
+            .query("UPDATE registros_acceso SET estatus_notificacion = 'ENVIADO' WHERE id_registro = (SELECT MAX(id_registro) FROM registros_acceso WHERE id_alumno = @id_alumno)");
 
         res.json({
             status: 'success',
