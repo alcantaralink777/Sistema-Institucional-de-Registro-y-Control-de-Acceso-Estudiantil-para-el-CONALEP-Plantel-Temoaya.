@@ -51,7 +51,7 @@
         log.innerHTML += `<br>> Código detectado: ${decodedText}. Procesando...`;
 
         // Conexión a la IP local de tu laptop (192.168.68.117) en el puerto 3000
-        fetch('http://192.168.68.117:3000/api/escaneo', {
+        fetch('http://192.168.137.209:3000/api/escaneo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ matricula: decodedText, tipo_movimiento: tipoMovimiento })
