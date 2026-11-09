@@ -26,10 +26,10 @@ app.post('/api/escaneo', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
 
-        // 1. Buscar si el alumno existe
+        // 1. Buscar si el alumno existe y obtener el teléfono del tutor
         let resultadoAlumno = await pool.request()
             .input('matricula', sql.VarChar, matricula)
-            .query('SELECT id_alumno, nombre, carrera, grupo FROM alumnos WHERE matricula = @matricula');
+            .query('SELECT id_alumno, nombre, carrera, grupo, telefono_tutor FROM alumnos WHERE matricula = @matricula');
 
         if (resultadoAlumno.recordset.length === 0) {
             return res.status(404).json({ status: 'error', mensaje: 'Matrícula no encontrada' });
@@ -88,6 +88,12 @@ app.post('/api/escaneo', async (req, res) => {
 
         const fechaHoraActual = new Date().toLocaleString('es-MX');
         console.log(`[REGISTRO BD] Alumno: ${alumno.nombre} (${alumno.grupo}) - ${tipo_movimiento} a las ${fechaHoraActual}`);
+        
+        if (alumno.telefono_tutor) {
+            console.log(`[TUTOR] Teléfono registrado para notificación: ${alumno.telefono_tutor}`);
+        } else {
+            console.log(`[TUTOR] El alumno no tiene un número de tutor registrado.`);
+        }
 
         // 3. Actualización limpia del estatus de notificación en el último registro del alumno
         await pool.request()
@@ -99,7 +105,7 @@ app.post('/api/escaneo', async (req, res) => {
             mensaje: `Acceso de ${tipo_movimiento} registrado con éxito`,
             alumno: `${alumno.nombre} - ${alumno.carrera} (${alumno.grupo})`,
             fechaHora: fechaHoraActual,
-            notificacion: 'Notificación enviada al tutor correctamente'
+            notificacion: alumno.telefono_tutor ? `Enviado al tutor (${alumno.telefono_tutor})` : 'Sin teléfono de tutor registrado'
         });
 
     } catch (err) {
