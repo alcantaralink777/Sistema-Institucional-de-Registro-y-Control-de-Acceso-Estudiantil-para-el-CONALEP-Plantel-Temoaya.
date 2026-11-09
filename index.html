@@ -38,38 +38,34 @@
 </div>
 
 <script>
-    let tipoMovimiento = 'ENTRADA';
-
-    function setTipo(tipo) {
-        tipoMovimiento = tipo;
-        document.getElementById('btnEntrada').classList.toggle('active', tipo === 'ENTRADA');
-        document.getElementById('btnSalida').classList.toggle('active', tipo === 'SALIDA');
-    }
-
-    function onScanSuccess(decodedText, decodedResult) {
+ function onScanSuccess(decodedText, decodedResult) {
         const log = document.getElementById('log');
-        log.innerHTML += `<br>> Código detectado: ${decodedText}. Procesando...`;
+        
+        // Limpiar el texto si escanea una URL completa de la credencial oficial
+        let matriculaLimpia = decodedText.trim();
+        if (matriculaLimpia.includes('/')) {
+            const partes = matriculaLimpia.split('/');
+            matriculaLimpia = partes[partes.length - 1];
+        }
 
-        // Conexión a la IP local de tu laptop (192.168.68.117) en el puerto 3000
+        log.innerHTML += `<br>> Detectado: ${matriculaLimpia}. Procesando...`;
+
+        // Petición hacia la nueva IP de tu computadora (192.168.137.209)
         fetch('http://192.168.137.209:3000/api/escaneo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ matricula: decodedText, tipo_movimiento: tipoMovimiento })
+            body: JSON.stringify({ matricula: matriculaLimpia, tipo_movimiento: tipoMovimiento })
         })
         .then(res => res.json())
         .then(data => {
-            log.innerHTML += `<br><span style="color:#38bdf8;">> BD: ${data.mensaje} (${data.alumno || ''})</span>`;
-            log.innerHTML += `<br><span style="color:#facc15;">> API: ${data.notificacion}</span>`;
+            log.innerHTML += `<br><span style="color:#38bdf8;">> BD: ${data.mensaje || 'Procesado'} (${data.alumno || ''})</span>`;
+            log.innerHTML += `<br><span style="color:#facc15;">> API: ${data.notificacion || 'OK'}</span>`;
             log.scrollTop = log.scrollHeight;
         })
         .catch(err => {
             log.innerHTML += `<br><span style="color:#f87171;">> Error: No se pudo conectar con el servidor local.</span>`;
         });
     }
-
-    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-    html5QrcodeScanner.render(onScanSuccess);
-</script>
 
 </body>
 </html>
