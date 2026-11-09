@@ -3,38 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Acceso QR - CONALEP Temoaya</title>
+    <title>Control de Acceso - CONALEP Plantel Temoaya</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 20px; text-align: center; }
-        .container { max-width: 500px; margin: 0 auto; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        h1 { font-size: 1.4rem; color: #38bdf8; margin-bottom: 5px; }
-        p { color: #94a3b8; font-size: 0.9rem; }
-        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin: 15px 0; background: #000; }
-        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        button { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .btn-entrada { background: #22c55e; color: white; }
-        .btn-salida { background: #ef4444; color: white; }
-        .active { outline: 3px solid #fff; }
-        #log { background: #0f172a; padding: 10px; border-radius: 6px; text-align: left; font-size: 0.85rem; height: 120px; overflow-y: auto; color: #4ade80; }
+        :root {
+            --primary-color: #7b1113; /* Guinda institucional */
+            --primary-dark: #5a0c0e;
+            --accent-color: #c5a059; /* Dorado institucional / sutil */
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border-top: 5px solid var(--primary-color);
+        }
+
+        .header-logo {
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            color: var(--text-light);
+            margin: 0 0 5px 0;
+            font-weight: 700;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .btn-mode {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+
+        .btn-entrada { background: #15803d; color: white; }
+        .btn-salida { background: #b91c1c; color: white; }
+
+        .btn-mode.active {
+            opacity: 1;
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            outline: 2px solid #fff;
+        }
+
+        #reader {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            background: #000;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-container {
+            text-align: left;
+            background: #090d16;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+        }
+
+        .log-title {
+            font-size: 0.8rem;
+            color: var(--accent-color);
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        #log {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            height: 110px;
+            overflow-y: auto;
+            color: #4ade80;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>CONALEP Plantel Temoaya</h1>
-    <p>Escáner Móvil de Acceso Estudiantil</p>
+    <div class="header-logo">CONALEP Estado de México</div>
+    <h1>Plantel Temoaya</h1>
+    <p class="subtitle">Sistema de Control y Acceso Estudiantil</p>
 
     <div class="btn-group">
-        <button id="btnEntrada" class="btn-entrada active" onclick="setTipo('ENTRADA')">ENTRADA</button>
-        <button id="btnSalida" class="btn-salida" onclick="setTipo('SALIDA')">SALIDA</button>
+        <button id="btnEntrada" class="btn-mode btn-entrada active" onclick="setTipo('ENTRADA')">📥 ENTRADA</button>
+        <button id="btnSalida" class="btn-mode btn-salida" onclick="setTipo('SALIDA')">📤 SALIDA</button>
     </div>
 
     <!-- Visor de la cámara -->
     <div id="reader"></div>
 
-    <h3>Registro de Notificaciones:</h3>
-    <div id="log">> Esperando escaneo de credencial QR...</div>
+    <div class="log-container">
+        <div class="log-title">Registro de Actividad en Tiempo Real</div>
+        <div id="log">> Sistema listo. Esperando escaneo...</div>
+    </div>
 </div>
 
 <script>
@@ -55,12 +164,12 @@
             matriculaLimpia = partes[partes.length - 1];
         }
 
-        // FILTRO DE SEGURIDAD: Si la cámara lee texto basura o sale incompleto (< 8 caracteres), se descarta de inmediato
+        // Filtro de seguridad de longitud para evitar lecturas basura
         if (matriculaLimpia.length < 8) {
             return; 
         }
 
-        log.innerHTML += `<br>> Detectado: ${matriculaLimpia}. Procesando...`;
+        log.innerHTML += `<br>> Procesando: ${matriculaLimpia}...`;
 
         fetch('http://192.168.137.209:3000/api/escaneo', {
             method: 'POST',
@@ -70,19 +179,19 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                log.innerHTML += `<br><span style="color:#38bdf8;">> BD: ${data.mensaje} (${data.alumno})</span>`;
+                log.innerHTML += `<br><span style="color:#38bdf8;">> [OK] ${data.mensaje} (${data.alumno})</span>`;
             } else {
-                log.innerHTML += `<br><span style="color:#f87171;">> Aviso: ${data.mensaje}</span>`;
+                log.innerHTML += `<br><span style="color:#f87171;">> [AVISO] ${data.mensaje}</span>`;
             }
-            log.innerHTML += `<br><span style="color:#facc15;">> API: ${data.notificacion || 'OK'}</span>`;
+            log.innerHTML += `<br><span style="color:#facc15;">> Tutor: ${data.notificacion || 'Notificado'}</span>`;
             log.scrollTop = log.scrollHeight;
         })
         .catch(err => {
-            log.innerHTML += `<br><span style="color:#f87171;">> Error: No se pudo conectar con el servidor local.</span>`;
+            log.innerHTML += `<br><span style="color:#f87171;">> Error de conexión con el servidor.</span>`;
         });
     }
 
-    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 240 });
     html5QrcodeScanner.render(onScanSuccess);
 </script>
 
