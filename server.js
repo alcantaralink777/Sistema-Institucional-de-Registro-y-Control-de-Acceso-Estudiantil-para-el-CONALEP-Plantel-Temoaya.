@@ -8,14 +8,8 @@ app.use(express.json());
 
 // Configuración adaptada a tu SQL Server (Autenticación de Windows)
 
-const config = {
-    server: '.\\ALCANTARA1', // Tu instancia local
-    database: 'conalep_acceso',
-    driver: 'msnodesqlv8',
-    options: {
-        trustedConnection: true, // Autenticación de Windows
-        enableArithAbort: true
-    }
+const dbConfig = {
+    connectionString: "Driver={ODBC Driver 17 for SQL Server};Server=.\\ALCANTARA1;Database=conalep_acceso;Trusted_Connection=yes;"
 };
 };
 
