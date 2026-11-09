@@ -7,7 +7,6 @@ app.use(cors());
 app.use(express.json());
 
 // Configuración adaptada a tu SQL Server (Autenticación de Windows)
-const sql = require('mssql/msnodesqlv8');
 
 const config = {
     server: '.\\ALCANTARA1', // Tu instancia local
