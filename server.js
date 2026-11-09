@@ -46,7 +46,7 @@ app.post('/api/escaneo', async (req, res) => {
             const ultimo = ultimoMovimiento.recordset[0];
             const tiempoTranscurrido = (new Date() - new Date(ultimo.fecha_hora)) / 1000; // en segundos
 
-            // Regla A: Evitar doble escaneo idéntico por accidente en menos de 30 segundos
+            // Evitar doble escaneo idéntico en menos de 30 segundos
             if (tiempoTranscurrido < 30 && ultimo.tipo_movimiento === tipo_movimiento) {
                 return res.json({
                     status: 'success',
@@ -56,7 +56,7 @@ app.post('/api/escaneo', async (req, res) => {
                 });
             }
 
-            // Regla B: Validar secuencia lógica (evitar doble entrada o doble salida seguida)
+            // Validar secuencia lógica (evitar doble entrada o doble salida seguida)
             if (tipo_movimiento === 'ENTRADA' && ultimo.tipo_movimiento === 'ENTRADA' && tiempoTranscurrido > 30) {
                 return res.status(400).json({
                     status: 'error',
