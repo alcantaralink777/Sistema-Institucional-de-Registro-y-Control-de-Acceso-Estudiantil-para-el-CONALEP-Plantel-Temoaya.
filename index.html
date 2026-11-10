@@ -210,11 +210,11 @@
         log.innerHTML += `<br><span style="color:#facc15;">> Procesando: ${matriculaLimpia}...</span>`;
         log.scrollTop = log.scrollHeight;
 
-       fetch('https://rotten-socks-obey.loca.lt/api/escaneo', {
+       fetch('https://conalep-acceso-temoaya.loca.lt/api/escaneo', {
     method: 'POST',
     headers: { 
         'Content-Type': 'application/json',
-        'bypass-tunnel-reminder': 'true' // Encabezado para omitir la pantalla de advertencia
+        'bypass-tunnel-reminder': 'true'
     },
     body: JSON.stringify({ matricula: matriculaLimpia, tipo_movimiento: tipoMovimiento })
 })
