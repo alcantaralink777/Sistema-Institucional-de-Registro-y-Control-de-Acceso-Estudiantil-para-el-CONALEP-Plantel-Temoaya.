@@ -148,6 +148,7 @@
 
 <script>
     let tipoMovimiento = 'ENTRADA';
+    let escaneoBloqueado = false; // Bandera de enfriamiento anti-rebote
 
     function setTipo(tipo) {
         tipoMovimiento = tipo;
@@ -156,8 +157,9 @@
     }
 
     function onScanSuccess(decodedText, decodedResult) {
-        const log = document.getElementById('log');
-        
+        // Si está bloqueado temporalmente por escaneo previo, ignorar lecturas en ráfaga
+        if (escaneoBloqueado) return;
+
         let matriculaLimpia = decodedText.trim();
         if (matriculaLimpia.includes('/')) {
             const partes = matriculaLimpia.split('/');
@@ -169,9 +171,14 @@
             return; 
         }
 
-        log.innerHTML += `<br>> Procesando: ${matriculaLimpia}...`;
+        // Activar bloqueo temporal (3.5 segundos de enfriamiento)
+        escaneoBloqueado = true;
 
-       fetch('http://192.168.68.128:3000/api/escaneo', {
+        const log = document.getElementById('log');
+        log.innerHTML += `<br><span style="color:#facc15;">> Procesando: ${matriculaLimpia}...</span>`;
+        log.scrollTop = log.scrollHeight;
+
+        fetch('http://192.168.68.128:3000/api/escaneo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ matricula: matriculaLimpia, tipo_movimiento: tipoMovimiento })
@@ -183,15 +190,32 @@
             } else {
                 log.innerHTML += `<br><span style="color:#f87171;">> [AVISO] ${data.mensaje}</span>`;
             }
-            log.innerHTML += `<br><span style="color:#facc15;">> Tutor: ${data.notificacion || 'Notificado'}</span>`;
+            log.innerHTML += `<br><span style="color:#4ade80;">> Tutor: ${data.notificacion || 'Notificado'}</span>`;
             log.scrollTop = log.scrollHeight;
+
+            // Liberar bloqueo después de 3.5 segundos para permitir un nuevo escaneo fluido
+            setTimeout(() => {
+                escaneoBloqueado = false;
+            }, 3500);
         })
         .catch(err => {
             log.innerHTML += `<br><span style="color:#f87171;">> Error de conexión con el servidor.</span>`;
+            log.scrollTop = log.scrollHeight;
+            
+            // Liberar bloqueo en caso de error
+            setTimeout(() => {
+                escaneoBloqueado = false;
+            }, 2000);
         });
     }
 
-    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 240 });
+    // Configuración optimizada a 5 fps para dar estabilidad y evitar lecturas falsas/sensibles
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+        fps: 5, 
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+    });
+    
     html5QrcodeScanner.render(onScanSuccess);
 </script>
 
