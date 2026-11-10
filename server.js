@@ -122,11 +122,18 @@ app.post('/api/escaneo', async (req, res) => {
             const mensajeWhatsApp = `🔔 *CONALEP Plantel Temoaya*\n\nAviso escolar:\nEstimado tutor, le informamos que el alumno(a) *${alumno.nombre}* (${alumno.grupo}) ha registrado su *${tipo_movimiento}* al plantel.\n\n📅 Fecha y hora: ${fechaHoraActual}`;
 
             try {
-                await waClient.sendMessage(chatId, mensajeWhatsApp);
+                // Verificar si el número está registrado en WhatsApp antes de enviar
+                const contactId = await waClient.getNumberId(chatId);
+                
+                if (!contactId) {
+                    throw new Error('El número no está registrado en WhatsApp o no es válido.');
+                }
+
+                await waClient.sendMessage(contactId._serialized, mensajeWhatsApp);
                 console.log(`[WHATSAPP] Mensaje enviado exitosamente al tutor al número: ${alumno.telefono_tutor}`);
                 estadoNotificacion = `Enviado al tutor (${alumno.telefono_tutor})`;
             } catch (waError) {
-                console.error('[WHATSAPP ERROR] No se pudo enviar el mensaje:', waError);
+                console.error('[WHATSAPP ERROR] No se pudo enviar el mensaje:', waError.message);
                 estadoNotificacion = 'Error al enviar WhatsApp';
             }
         } else {
