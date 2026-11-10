@@ -210,11 +210,10 @@
         log.innerHTML += `<br><span style="color:#facc15;">> Procesando: ${matriculaLimpia}...</span>`;
         log.scrollTop = log.scrollHeight;
 
-      fetch('https://conalep-acceso-temoaya.loca.lt/api/escaneo', {
+fetch('http://192.168.68.128:3000/api/escaneo', {
     method: 'POST',
     headers: { 
-        'Content-Type': 'application/json',
-        'bypass-tunnel-reminder': 'true'
+        'Content-Type': 'application/json'
     },
     body: JSON.stringify({ matricula: matriculaLimpia, tipo_movimiento: tipoMovimiento })
 })
