@@ -35,6 +35,9 @@ waClient.on('ready', () => {
 
 waClient.initialize();
 
+// Control temporal para evitar doble Petición simultánea en memoria del servidor
+const procesandoMatriculas = new Set();
+
 // Endpoint que recibe el escaneo del QR desde la web/móvil
 app.post('/api/escaneo', async (req, res) => {
     const { matricula, tipo_movimiento } = req.body;
@@ -42,6 +45,13 @@ app.post('/api/escaneo', async (req, res) => {
     if (!matricula || !tipo_movimiento) {
         return res.status(400).json({ status: 'error', mensaje: 'Faltan datos (matrícula o tipo de movimiento)' });
     }
+
+    // Bloqueo instantáneo si la matrícula ya se está procesando en este milisegundo
+    if (procesandoMatriculas.has(matricula)) {
+        return res.status(429).json({ status: 'error', mensaje: 'Procesando escaneo anterior, espere un momento.' });
+    }
+
+    procesandoMatriculas.add(matricula);
 
     try {
         let pool = await sql.connect(dbConfig);
@@ -52,6 +62,7 @@ app.post('/api/escaneo', async (req, res) => {
             .query('SELECT id_alumno, nombre, carrera, grupo, telefono_tutor FROM alumnos WHERE matricula = @matricula');
 
         if (resultadoAlumno.recordset.length === 0) {
+            procesandoMatriculas.delete(matricula);
             return res.status(404).json({ status: 'error', mensaje: 'Matrícula no encontrada' });
         }
 
@@ -66,8 +77,9 @@ app.post('/api/escaneo', async (req, res) => {
             const ultimo = ultimoMovimiento.recordset[0];
             const tiempoTranscurrido = (new Date() - new Date(ultimo.fecha_hora)) / 1000; // en segundos
 
-            // Evitar doble escaneo idéntico en menos de 30 segundos
-            if (tiempoTranscurrido < 30 && ultimo.tipo_movimiento === tipo_movimiento) {
+            // Evitar doble escaneo idéntico en menos de 10 segundos
+            if (tiempoTranscurrido < 10 && ultimo.tipo_movimiento === tipo_movimiento) {
+                procesandoMatriculas.delete(matricula);
                 return res.json({
                     status: 'success',
                     mensaje: `Acceso ya registrado recientemente`,
@@ -77,14 +89,16 @@ app.post('/api/escaneo', async (req, res) => {
             }
 
             // Validar secuencia lógica (evitar doble entrada o doble salida seguida)
-            if (tipo_movimiento === 'ENTRADA' && ultimo.tipo_movimiento === 'ENTRADA' && tiempoTranscurrido > 30) {
+            if (tipo_movimiento === 'ENTRADA' && ultimo.tipo_movimiento === 'ENTRADA' && tiempoTranscurrido > 10) {
+                procesandoMatriculas.delete(matricula);
                 return res.status(400).json({
                     status: 'error',
                     mensaje: `El alumno ya se encuentra dentro. Debe registrar Salida.`
                 });
             }
 
-            if (tipo_movimiento === 'SALIDA' && ultimo.tipo_movimiento === 'SALIDA' && tiempoTranscurrido > 30) {
+            if (tipo_movimiento === 'SALIDA' && ultimo.tipo_movimiento === 'SALIDA' && tiempoTranscurrido > 10) {
+                procesandoMatriculas.delete(matricula);
                 return res.status(400).json({
                     status: 'error',
                     mensaje: `El alumno ya registró su salida previamente.`
@@ -93,6 +107,7 @@ app.post('/api/escaneo', async (req, res) => {
         } else {
             // Si es su primer registro histórico y selecciona SALIDA por error
             if (tipo_movimiento === 'SALIDA') {
+                procesandoMatriculas.delete(matricula);
                 return res.status(400).json({
                     status: 'error',
                     mensaje: `No hay registro previo de entrada para este alumno.`
@@ -147,6 +162,9 @@ app.post('/api/escaneo', async (req, res) => {
             .input('estatus', sql.VarChar, estatusFinalBD)
             .query("UPDATE registros_acceso SET estatus_notificacion = @estatus WHERE id_registro = (SELECT MAX(id_registro) FROM registros_acceso WHERE id_alumno = @id_alumno)");
 
+        // Liberar el bloqueo de la matrícula
+        procesandoMatriculas.delete(matricula);
+
         res.json({
             status: 'success',
             mensaje: `Acceso de ${tipo_movimiento} registrado con éxito`,
@@ -156,6 +174,7 @@ app.post('/api/escaneo', async (req, res) => {
         });
 
     } catch (err) {
+        procesandoMatriculas.delete(matricula);
         console.error('Error en la base de datos:', err);
         res.status(500).json({ status: 'error', mensaje: 'Error interno del servidor' });
     }
