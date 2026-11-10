@@ -157,7 +157,7 @@
     }
 
     function onScanSuccess(decodedText, decodedResult) {
-        // Si está bloqueado temporalmente por escaneo previo, ignorar lecturas en ráfaga
+        // Ignorar escaneos si el sistema está en periodo de enfriamiento
         if (escaneoBloqueado) return;
 
         let matriculaLimpia = decodedText.trim();
@@ -166,12 +166,12 @@
             matriculaLimpia = partes[partes.length - 1];
         }
 
-        // Filtro de seguridad de longitud para evitar lecturas basura
+        // Filtro de seguridad de longitud
         if (matriculaLimpia.length < 8) {
             return; 
         }
 
-        // Activar bloqueo temporal (3.5 segundos de enfriamiento)
+        // Bloqueo temporal para evitar disparos múltiples
         escaneoBloqueado = true;
 
         const log = document.getElementById('log');
@@ -193,7 +193,7 @@
             log.innerHTML += `<br><span style="color:#4ade80;">> Tutor: ${data.notificacion || 'Notificado'}</span>`;
             log.scrollTop = log.scrollHeight;
 
-            // Liberar bloqueo después de 3.5 segundos para permitir un nuevo escaneo fluido
+            // Desbloquear tras 3.5 segundos para la siguiente credencial
             setTimeout(() => {
                 escaneoBloqueado = false;
             }, 3500);
@@ -202,19 +202,31 @@
             log.innerHTML += `<br><span style="color:#f87171;">> Error de conexión con el servidor.</span>`;
             log.scrollTop = log.scrollHeight;
             
-            // Liberar bloqueo en caso de error
             setTimeout(() => {
                 escaneoBloqueado = false;
             }, 2000);
         });
     }
 
-    // Configuración optimizada a 5 fps para dar estabilidad y evitar lecturas falsas/sensibles
+    // Cálculo dinámico para un recuadro de escaneo preciso y enfocado
+    const qrboxFunction = function(viewfinderWidth, viewfinderHeight) {
+        let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+        let qrboxSize = Math.floor(minEdgeSize * 0.70); // 70% del visor
+        return {
+            width: qrboxSize,
+            height: qrboxSize
+        };
+    };
+
+    // Configuración avanzada de la cámara
     let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-        fps: 5, 
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0
-    });
+        fps: 10, 
+        qrbox: qrboxFunction,
+        aspectRatio: 1.0,
+        experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true // Lector nativo por hardware (súper rápido)
+        }
+    }, false);
     
     html5QrcodeScanner.render(onScanSuccess);
 </script>
