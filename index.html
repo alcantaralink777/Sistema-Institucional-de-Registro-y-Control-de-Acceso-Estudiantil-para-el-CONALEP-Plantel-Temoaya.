@@ -148,7 +148,7 @@
 
 <script>
     let tipoMovimiento = 'ENTRADA';
-    let escaneoBloqueado = false; // Bandera de enfriamiento anti-rebote
+    let escaneoBloqueado = false;
 
     function setTipo(tipo) {
         tipoMovimiento = tipo;
@@ -156,22 +156,54 @@
         document.getElementById('btnSalida').classList.toggle('active', tipo === 'SALIDA');
     }
 
+    // Función para reproducir sonidos sintéticos (Beep de éxito o error)
+    function reproducirSonido(tipo) {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (tipo === 'exito') {
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } else {
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.25);
+            }
+        } catch (e) {
+            console.log("Audio no soportado o bloqueado por el navegador");
+        }
+    }
+
+    // Función para hablar usando la voz sintetizada del celular/computadora
+    function hablarTexto(texto) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // Cancela mensajes anteriores para que no se encimen
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = 'es-MX';
+            utterance.rate = 1.0; // Velocidad de la voz
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
     function onScanSuccess(decodedText, decodedResult) {
-        // Ignorar escaneos si el sistema está en periodo de enfriamiento
         if (escaneoBloqueado) return;
 
-        let matriculaLimpia = decodedText.trim();
-        if (matriculaLimpia.includes('/')) {
-            const partes = matriculaLimpia.split('/');
-            matriculaLimpia = partes[partes.length - 1];
-        }
+        let textoLeido = decodedText.trim();
+        const regexMatricula = /\b\d{9}-\d\b/;
+        const coincidencia = textoLeido.match(regexMatricula);
 
-        // Filtro de seguridad de longitud
-        if (matriculaLimpia.length < 8) {
-            return; 
-        }
+        if (!coincidencia) return;
 
-        // Bloqueo temporal para evitar disparos múltiples
+        let matriculaLimpia = coincidencia[0];
         escaneoBloqueado = true;
 
         const log = document.getElementById('log');
@@ -187,13 +219,16 @@
         .then(data => {
             if (data.status === 'success') {
                 log.innerHTML += `<br><span style="color:#38bdf8;">> [OK] ${data.mensaje} (${data.alumno})</span>`;
+                reproducirSonido('exito');
+                hablarTexto("Acceso correcto");
             } else {
                 log.innerHTML += `<br><span style="color:#f87171;">> [AVISO] ${data.mensaje}</span>`;
+                reproducirSonido('error');
+                hablarTexto("Aviso. " + data.mensaje);
             }
             log.innerHTML += `<br><span style="color:#4ade80;">> Tutor: ${data.notificacion || 'Notificado'}</span>`;
             log.scrollTop = log.scrollHeight;
 
-            // Desbloquear tras 3.5 segundos para la siguiente credencial
             setTimeout(() => {
                 escaneoBloqueado = false;
             }, 3500);
@@ -201,6 +236,7 @@
         .catch(err => {
             log.innerHTML += `<br><span style="color:#f87171;">> Error de conexión con el servidor.</span>`;
             log.scrollTop = log.scrollHeight;
+            reproducirSonido('error');
             
             setTimeout(() => {
                 escaneoBloqueado = false;
@@ -208,23 +244,21 @@
         });
     }
 
-    // Cálculo dinámico para un recuadro de escaneo preciso y enfocado
     const qrboxFunction = function(viewfinderWidth, viewfinderHeight) {
         let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-        let qrboxSize = Math.floor(minEdgeSize * 0.70); // 70% del visor
+        let qrboxSize = Math.floor(minEdgeSize * 0.70);
         return {
             width: qrboxSize,
             height: qrboxSize
         };
     };
 
-    // Configuración avanzada de la cámara
     let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
         fps: 10, 
         qrbox: qrboxFunction,
         aspectRatio: 1.0,
         experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true // Lector nativo por hardware (súper rápido)
+            useBarCodeDetectorIfSupported: true 
         }
     }, false);
     
